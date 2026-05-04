@@ -1,0 +1,79 @@
+---
+- name: Configurar VM y desplegar Coffee Shop
+  hosts: all
+  become: yes
+
+  tasks:
+    - name: Actualizar paquetes del sistema
+      apt:
+        update_cache: yes
+        upgrade: yes
+
+    - name: Instalar dependencias
+      apt:
+        name:
+          - ca-certificates
+          - curl
+          - gnupg
+          - git
+        state: present
+
+    - name: Agregar clave GPG de Docker
+      shell: |
+        install -m 0755 -d /etc/apt/keyrings
+        curl -fsSL https://download.docker.com/linux/ubuntu/gpg -o /etc/apt/keyrings/docker.asc
+        chmod a+r /etc/apt/keyrings/docker.asc
+
+    - name: Agregar repositorio de Docker
+      shell: |
+        echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.asc] https://download.docker.com/linux/ubuntu $(. /etc/os-release && echo $VERSION_CODENAME) stable" | tee /etc/apt/sources.list.d/docker.list > /dev/null
+
+    - name: Instalar Docker
+      apt:
+        update_cache: yes
+        name:
+          - docker-ce
+          - docker-ce-cli
+          - containerd.io
+          - docker-compose-plugin
+        state: present
+
+    - name: Iniciar y habilitar Docker
+      service:
+        name: docker
+        state: started
+        enabled: yes
+
+    - name: Clonar repositorio del Coffee Shop
+      git:
+        repo: https://github.com/yancyrafael/Docker-compose.git
+        dest: /home/{{ ansible_user }}/Docker-compose
+        force: yes
+
+    - name: Levantar contenedores con Docker Compose
+      command: docker compose up -d --build
+      args:
+        chdir: /home/{{ ansible_user }}/Docker-compose
+
+    - name: Esperar a que la API arranque
+      uri:
+        url: http://localhost:5000/api/health
+        status_code: 200
+      register: api_health
+      retries: 12
+      delay: 10
+      until: api_health.status == 200
+
+    - name: Mostrar estado de la API
+      debug:
+        msg: "API funcionando: {{ api_health.json.status }}"
+
+    - name: Mostrar contenedores corriendo
+      command: docker compose ps
+      args:
+        chdir: /home/{{ ansible_user }}/Docker-compose
+      register: containers
+
+    - name: Estado final
+      debug:
+        msg: "{{ containers.stdout }}"
