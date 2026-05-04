@@ -1,3 +1,3 @@
 rg_name        = "rg-ansible-vm"
-location       = "Canada East"
+location       = "East US"
 admin_password = "CoffeeShop@2026!"
