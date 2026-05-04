@@ -122,7 +122,7 @@ resource "azurerm_linux_virtual_machine" "main" {
   name                            = "coffeeshop-vm"
   resource_group_name             = azurerm_resource_group.rg.name
   location                        = azurerm_resource_group.rg.location
-  size                            = "Standard_B1s"
+  size                            = "Standard_B2ms"
   admin_username                  = var.admin_username
   admin_password                  = var.admin_password
   disable_password_authentication = false
